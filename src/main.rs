@@ -41,8 +41,6 @@ fn main() {
         }
     };
 
-    println!("{:#?}", args);
-
     if args.take.is_none() {
         // create a new index file, it's cool to panic here:
         let f = fs::File::create(args.idx).expect("could not create index file");
@@ -101,7 +99,7 @@ fn main() {
             reader.read_line(&mut take_buf).expect("could not read from source file");
             i = i + 1;
         }
-        print!("{:#?}", take_buf)
+        print!("{}", take_buf)
     }
 }
 
