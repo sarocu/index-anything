@@ -1,6 +1,6 @@
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, Write, Read, Seek};
 use std::fs;
-use byteorder::{BigEndian, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
 
 #[derive(Debug)]
 pub struct IndexArgs {
@@ -43,35 +43,66 @@ fn main() {
 
     println!("{:#?}", args);
 
-    // create a new index file, it's cool to panic here:
-    let f = fs::File::create(args.idx).expect("could not create index file");
-    let mut writer = io::BufWriter::new(f);
+    if args.take.is_none() {
+        // create a new index file, it's cool to panic here:
+        let f = fs::File::create(args.idx).expect("could not create index file");
+        let mut writer = io::BufWriter::new(f);
 
-    // open input file, also cool to panic:
-    let input = fs::File::open(args.file).expect("could not open input file!");
-    let mut reader = io::BufReader::new(input);
+        // open input file, also cool to panic:
+        let input = fs::File::open(args.file).expect("could not open input file!");
+        let mut reader = io::BufReader::new(input);
 
-    let mut eof = false;
-    let mut pos: u64 = 0; // byte position
-    let mut buf = String::new(); // string buffer
+        let mut eof = false;
+        let mut pos: u64 = 0; // byte position
+        let mut buf = String::new(); // string buffer
 
-    while !eof {
-        let len = reader.read_line(&mut buf);
-        match len {
-            Err(_) => eof = true,
-            Ok(l) => {
-                if l == 0 {
-                    eof = true
-                } else {
-                    pos = pos + l as  u64;
-                    writer.write_u64::<BigEndian>(pos).expect("could not write byte offset position")
+        while !eof {
+            let len = reader.read_line(&mut buf);
+            match len {
+                Err(_) => eof = true,
+                Ok(l) => {
+                    if l == 0 {
+                        eof = true
+                    } else {
+                        pos = pos + l as  u64;
+                        writer.write_u64::<BigEndian>(pos).expect("could not write byte offset position")
+                    }
                 }
             }
+            // don't slurp memory:
+            buf.clear();
         }
-        // don't slurp memory:
-        buf.clear();
+        writer.flush().expect("couldn't successfully flush index");
+    } else {
+        if args.start.is_none() {
+            panic!("you provided `take` but not `start`");
+        }
+
+        // open input file, cool to panic:
+        let input = fs::File::open(args.file).expect("could not open input file!");
+        let mut reader = io::BufReader::new(input);
+
+        // open idx file, also cool to panic:
+        let idx = fs::File::open(args.idx).expect("could not open index file!");
+        let mut idx_reader = io::BufReader::new(idx);
+
+        // start position: 8 bytes times the desired row, zero indexed:
+        let posSize: i64 = 8;
+        let mut pos = posSize * args.start.unwrap() as i64;
+
+        // seek the index:
+        idx_reader.seek_relative(pos).expect("could not seek the correct spot in index");
+        let start = idx_reader.read_u64::<BigEndian>().expect("could not read from index");
+        reader.seek_relative(start as i64).expect("could not seek the correct spot");
+
+        let mut take_buf = String::new();
+        let mut i = 0;
+        while i < args.take.unwrap() {
+            reader.read_line(&mut take_buf).expect("could not read from source file");
+            i = i + 1;
+        }
+        print!("{:#?}", take_buf)
     }
-    writer.flush().expect("couldn't successfully flush index");
 }
 
 fn parse_args() -> Result<IndexArgs, pico_args::Error> {
