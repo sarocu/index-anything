@@ -3,7 +3,7 @@ Well, text files at least.
 
 This will take a file, loop through and identify the position of each newline character, writing that position to the index file.
 
-Influenced greatly by https://github.com/BurntSushi/rust-csv/blob/master/csv-index/src/simple.rs
+Influenced greatly by https://github.com/BurntSushi/rust-csv
 
 ## Dev stuff
 ```bash
@@ -12,6 +12,7 @@ cargo build
 
 # lint n fix
 cargo fmt
+cargo fix
 
 # executable at target/debug/idx
 # move it to the path:
