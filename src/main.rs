@@ -62,8 +62,8 @@ fn main() {
                     if l == 0 {
                         eof = true
                     } else {
+                        writer.write_u64::<BigEndian>(pos).expect("could not write byte offset position");
                         pos = pos + l as  u64;
-                        writer.write_u64::<BigEndian>(pos).expect("could not write byte offset position")
                     }
                 }
             }
